@@ -54,9 +54,7 @@ Open
          !byte kMLIOpen
          !word mliParamForOpen
          bcs   Quit
-         lda   #kMLIRead
-         ldy   #kMLIReadCount
-         jsr   CallMLI
+         jsr   Read
          bcs   Close
 ;DHGRCopy
          ldx   #$20
@@ -74,10 +72,7 @@ Open
          inc   .copyb+2
          dex
          bne   .writeToAux
-;Read
-         lda   #kMLIRead
-         ldy   #kMLIReadCount
-         jsr   CallMLI
+         jsr   Read
 Close
          php
          lda   #kMLIClose
@@ -98,6 +93,10 @@ Close
 Quit
          lda   #kMLIQuit
          ldy   #kMLIQuitCount
+         bne   CallMLI               ; always branches
+Read
+         lda   #kMLIRead
+         ldy   #kMLIReadCount
 CallMLI
          sta   mlicmd
          sty   mliparam
