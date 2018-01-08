@@ -91,7 +91,7 @@ CopyToAuxHigh=*+2
          bvc   -
          ldx   #(softswitches_e-softswitches)-1
 -        ldy   softswitches,x
-         sta   (SoftswitchBase),y    ; enable graphics display
+         sta   (SoftswitchBase),y    ; restore main memory access, enable DHGR graphics display
          dex
          bpl   -
          jsr   Read                  ; read second half of graphic (stays in main memory)
