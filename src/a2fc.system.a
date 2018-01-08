@@ -40,7 +40,7 @@ inputfilebuffer
 Start
          ldx   #(CodeEnd-CodeStart)-1; copy code to lower memory so we can load graphic at $2000
 -        lda   CodeStart,x
-         sta   $00f8,x
+         sta   $00f7,x
          dex
          bpl   -
          txs
@@ -53,9 +53,9 @@ Start
 +        jmp   MLI                   ; exit via MLI (stack is arranged to execute Open MLI call)
 
 CodeStart
-!pseudopc $f8 {
+!pseudopc $f7 {
 softswitches
-         !byte $50,$52,$54,$57,$0d
+         !byte $50,$52,$54,$57,$0d,$5e
 
 mliParamForClose
          !byte kMLICloseCount
@@ -85,7 +85,7 @@ Open
          jsr   Read                  ; read second half of graphic (stays in main memory)
                                      ; does not return if error
 ;DHGRShow
-         lda   $C05E                 ; DHGR mode
+         inx
 -        ldy   softswitches,x
          sta   $c000,y               ; enable graphics display
          dex
