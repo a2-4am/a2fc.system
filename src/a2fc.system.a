@@ -91,13 +91,14 @@ CopyToAuxHigh=*+2
          bvc   -
          ldx   #(softswitches_e-softswitches)-1
 -        ldy   softswitches,x
-         sta   (WaitForKey+1),y      ; enable graphics display
+         sta   (SoftswitchBase),y    ; enable graphics display
          dex
          bpl   -
          jsr   Read                  ; read second half of graphic (stays in main memory)
                                      ; does not return if error
 ;DHGRShow
-WaitForKey
+;WaitForKey
+SoftswitchBase=*+1
 -        lda   $C000
          bpl   -
 Close
