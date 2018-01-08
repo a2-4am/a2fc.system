@@ -40,71 +40,22 @@ inputfilebuffer
 Start
          ldx   #(CodeEnd-CodeStart)-1; copy code to lower memory so we can load graphic at $2000
 -        lda   CodeStart,x
-         sta   $00f7,x
+         sta   $50,x
          dex
          bpl   -
-         txs
 ;CheckFor128K
          lda   MACHID
          and   #$30
          cmp   #$30                  ; 128K?
          beq   +                     ; yes, continue
          stx   inputfilebuffer       ; no, trash inputfilebuffer so open fails and we quit immediately
-+        jmp   $00ff
++        jmp   Open
 
 CodeStart
-!pseudopc $f7 {
+!pseudopc $50 {
 softswitches                         ; array of low bytes for $c0xx accesses
-         !byte $50,$52,$54,$57,$0d,$5e
-
-mliParamForClose
-         !byte kMLICloseCount
-         !byte 0                     ; close all files, also low part of pointer
-
-         !byte $20                   ; used by main->aux copy loop, also JSR
-         !word MLI                   ; JSR MLI
-Open
-         !byte kMLIOpen              ; stack-based params for Open MLI call
-         !word mliParamForOpen
-         ldx   #4                    ; both Read and Quit accept four parameters
-         stx   mliparam              ; set parameter count for MLI call
-         jsr   Read                  ; read first half of graphic (belongs in auxmem)
-                                     ; does not return if error
-;DHGRCopy
-         sta   $C00A
-         sta   $C000
-         sta   $C005                 ; read from mainmem, write to auxmem
--        lda   ($fa,x)               ; X is 4 from above
-         sta   ($fa,x)               ; X is 4 from above
-         inc   $fe
-         bne   -
-         inc   $ff
-         bit   $ff                   ; copy until $4000
-         bvc   -
-         sta   $C004                 ; read/write from mainmem
-         jsr   Read                  ; read second half of graphic (stays in main memory)
-                                     ; does not return if error
-;DHGRShow
-         inx
--        ldy   softswitches,x
-         sta   $c000,y               ; enable graphics display
-         dex
-         bpl   -
-;WaitForKey
--        lda   $C000
-         bpl   -
-Close
-         jsr   MLI                   ; close all files
-         !byte kMLIClose
-         !word mliParamForClose
-Quit
-         lsr   mlicmd                ; MLI_QUIT ($65) is half of MLI_READ ($CA) so that's great
-Read
-         jsr   MLI
-mlicmd   !byte kMLIRead
-         !word mliparam
-         bcs   Close                 ; error during open or read? close & quit
-         rts
+         !byte 0,$5e,$0d,$50,$52,$54,$57,4
+softswitches_e
 
 mliParamForOpen
          !byte kMLIOpenCount
@@ -112,8 +63,51 @@ mliParamForOpen
          !byte <aFileBuffer
 mliparam
          !byte >aFileBuffer
+mliParamForClose                     ; first handle will be 1, the same as kMLICloseCount
          !byte $00                   ; ProDOS file refnum (filled by MLI_OPEN call)
          !word $2000                 ; data address
-         !word $2000                 ; data length
+         !byte $00
+Open
+         JSR   MLI                   ; JSR (#$20) is high part of data length
+                                     ; MLI is replaced by read length ($2000)
+                                     ; and then used by main->aux copy loop
+         !byte kMLIOpen
+         !word mliParamForOpen
+         lda   #4                    ; both Read and Quit accept four parameters
+         sta   mliparam              ; set parameter count for MLI call
+         jsr   Read                  ; read first half of graphic (belongs in auxmem)
+                                     ; does not return if error
+;DHGRCopy
+         sta   $C005                 ; read from mainmem, write to auxmem
+-        lda   (Open+2,x)            ; reads from Open+1 because X is #$FF from above
+         sta   (Open+2,x)            ; reads from Open+1 because X is #$FF from above
+         inc   <(Open+1)
+         bne   -
+         inc   <(Open+2)
+         bit   <(Open+2)             ; copy until $4000
+         bvc   -
+         ldx   #(softswitches_e-softswitches)-1
+-        ldy   softswitches,x
+         sta   (WaitForKey+1),y      ; enable graphics display
+         dex
+         bpl   -
+         jsr   Read                  ; read second half of graphic (stays in main memory)
+                                     ; does not return if error
+;DHGRShow
+WaitForKey
+-        lda   $C000
+         bpl   -
+Close
+         jsr   MLI                   ; close all files
+         !byte kMLIClose
+         !word mliParamForClose
+Quit
+         lsr   <mlicmd               ; MLI_QUIT ($65) is half of MLI_READ ($CA) so that's great
+Read
+         jsr   MLI
+mlicmd   !byte kMLIRead
+         !word mliparam
+         bcs   Close                 ; error during open or read? close & quit
+         rts
 }
 CodeEnd
