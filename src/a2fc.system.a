@@ -38,44 +38,42 @@ MLI = $BF00
 inputfilebuffer
          !fill $40
 Start
-         ldx   #(CodeEnd-CodeStart)
-         txs
--        lda   CodeStart-1,x
-         pha
+         ldx   #(CodeEnd-CodeStart)-1
+-        lda   CodeStart,x
+         sta  $00fe,x
          dex
-         bne   -
+         bpl   -
+         txs
          jmp   MLI
 
 CodeStart
-!pseudopc $101 {
+!pseudopc $fe {
+         !word $2000
          !word Open-1
 Open
          !byte kMLIOpen
          !word mliParamForOpen
          bcs   Quit
-         jsr   Read
+         jsr   Read1
          bcs   Close
 ;DHGRCopy
          sta   $C00A
          sta   $C000
          sta   $C005                 ; read from mainmem, write to auxmem
-         ldx   #$20
-         stx   $45                   ; $44 is always 0 after MLI read
-         tay
--        lda   ($44),y
-         sta   ($44),y
-         iny
+-        lda   ($ff,x)
+         sta   ($ff,x)
+         inc   $fe
          bne   -
-         inc   $45
-         dex
-         bne   -
+         inc   $ff
+         bit   $ff
+         bvc   -
          sta   $C004                 ; read/write from mainmem
-         jsr   Read
+         jsr   Read2
 Close
          php
-         lda   #kMLIClose
-         ldy   #kMLICloseCount
-         jsr   CallMLI
+         jsr   MLI
+         !byte kMLIClose
+         !word mliParamForClose
          plp
          bcs   Quit
 ;DHGRShow
@@ -89,19 +87,19 @@ Close
 -        lda   $C000
          bpl   -
 Quit
-         lda   #kMLIQuit
-         ldy   #kMLIQuitCount
-         bne   CallMLI               ; always branches
-Read
-         lda   #kMLIRead
-         ldy   #kMLIReadCount
-CallMLI
-         sta   mlicmd
+         lsr   mlicmd
+Read1
+         ldy   #kMLIReadCount        ; also #kMLIQuitCount
          sty   mliparam
+Read2
          jsr   MLI
 mlicmd   !byte kMLIRead
          !word mliparam
          rts
+
+mliParamForClose
+         !byte kMLICloseCount
+         !byte 0                     ; all handles
 
 mliParamForOpen
          !byte kMLIOpenCount
