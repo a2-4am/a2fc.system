@@ -1,0 +1,115 @@
+!cpu 6502
+!to "../build/A2FC.SYSTEM#FF2000",plain
+*=$2000
+;
+; A2FC.SYSTEM
+; (c) 2018 by 4am
+; a very small DHGR graphics viewer
+; takes pathname of .a2fc file (in $2006),
+; loads it,
+; displays it,
+; waits for key,
+; quits via MLI
+;
+
+;
+; MLI commands
+;
+kMLIOpen = $C8
+kMLIRead = $CA
+kMLIClose = $CC
+kMLIQuit = $65
+;
+; MLI parameter counts
+;
+kMLIOpenCount = $03
+kMLIReadCount = $04
+kMLICloseCount = $01
+kMLIQuitCount = $04
+;
+; other stuff
+;
+aFileBuffer = $9200
+
+         jmp   Start      ; magic jump
+         !byte $EE,$EE    ; magic bytes
+inputfile
+         !byte $40        ; length of inputfile buffer
+inputfilebuffer
+         !fill $40
+Start
+         ldx   #$00
+FM       lda   CodeStart,x
+         sta   Open,x
+         inx
+         bne   FM
+         jmp   Open
+CodeStart
+
+!pseudopc $200 {
+Open
+         jsr   CallMLIImmediate
+         bcs   Quit
+                                     ; A is 0 after successful MLI call
+         sta   mliparam+2            ; lo data address
+         sta   mliparam+4            ; lo data length
+         lda   mliparam+5
+         sta   mliparam+1            ; ProDOS file refnum
+         ldx   #$20
+         stx   mliparam+3            ; hi data address
+         stx   mliparam+5            ; hi data length
+         lda   #kMLIRead
+         ldy   #kMLIReadCount
+         jsr   CallMLI
+         bcs   Close
+;DHGRCopy
+         sta   $C00A
+         sta   $C000
+         tay                         ; A is 0 after successful MLI call
+                                     ; X is still #$20
+.writeToAux
+         sta   $C005                 ; read from mainmem, write to auxmem
+.copya   lda   $2000,y
+.copyb   sta   $2000,y
+         iny
+         bne   .copya
+         sta   $C004                 ; read/write from mainmem
+         inc   .copya+2
+         inc   .copyb+2
+         dex
+         bne   .writeToAux
+;Read
+         lda   #kMLIRead
+         ldy   #kMLIReadCount
+         jsr   CallMLI
+Close
+         lda   #kMLIClose
+         ldy   #kMLICloseCount
+         jsr   CallMLI
+;DHGRShow
+         lda   $C05E
+         sta   $C00D
+         bit   $C050
+         bit   $C054
+         bit   $C052
+         bit   $C057
+;WaitForKey
+-        lda   $C000
+         bpl   -
+Quit
+         lda   #kMLIQuit
+         ldy   #kMLIQuitCount
+CallMLI
+         sta   mlicmd
+         sty   mliparam
+CallMLIImmediate
+         jsr   $BF00
+mlicmd   !byte kMLIOpen
+         !word mliparam
+         rts
+mliparam !byte kMLIOpenCount
+         !word inputfilebuffer
+         !word aFileBuffer
+;        !byte $00,$00,$00,$00
+End
+}
