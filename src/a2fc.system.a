@@ -49,12 +49,18 @@ Start
          cmp   #$30                  ; 128K?
          beq   +                     ; yes, continue
          stx   inputfilebuffer       ; no, trash inputfilebuffer so open fails and we quit immediately
-+        jmp   Open
++        jsr   MLI                   ; open file
+         !byte kMLIOpen
+         !word mliParamForOpen
+         sty   <mliparam             ; set parameter count for MLI call
+                                     ; both Read and Quit accept four parameters
+                                     ; (Y is 4 from above)
+         jmp   ReadFile
 
 CodeStart
 !pseudopc $50 {
 softswitches                         ; array of low bytes for $c0xx accesses
-         !byte 4, 0,$5e,$0d,$50,$52,$54,$57
+         !byte 4,0,$5e,$0d,$50,$52,$54,$57
 softswitches_e
 
 mliParamForOpen
@@ -67,19 +73,14 @@ mliParamForClose                     ; first handle will be 1, the same as kMLIC
          !byte $00                   ; ProDOS file refnum (filled by MLI_OPEN call)
          !word $2000                 ; data address
          !byte $00
-Open
 CopyToAux=*+2                        ; +1 of real address because indexed by X (#$FF) below
 CopyToAuxLow=*+1
 CopyToAuxHigh=*+2
-         JSR   MLI                   ; JSR (#$20) is high part of data length
-                                     ; MLI is replaced by read length ($2000)
+ReadFile
+         jsr   Read                  ; JSR (#$20) is high part of data length
+                                     ; Read is replaced by read length ($2000)
                                      ; and then used by main->aux copy loop
-         !byte kMLIOpen
-         !word mliParamForOpen
-         sty   mliparam              ; set parameter count for MLI call
-                                     ; both Read and Quit accept four parameters
-                                     ; (Y is 4 from above)
-         jsr   Read                  ; read first half of graphic (belongs in auxmem)
+                                     ; read first half of graphic (belongs in auxmem)
                                      ; does not return if error
 ;DHGRCopy
          sta   $C005                 ; read from mainmem, write to auxmem
