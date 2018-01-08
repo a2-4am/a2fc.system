@@ -40,7 +40,7 @@ inputfilebuffer
 Start
          ldx   #(CodeEnd-CodeStart)-1; copy code to lower memory so we can load graphic at $2000
 -        lda   CodeStart,x
-         sta  $00fe,x
+         sta   $00fe,x
          dex
          bpl   -
          txs
