@@ -23,61 +23,67 @@ kMLIQuit = $65
 ; MLI parameter counts
 ;
 kMLIOpenCount = $03
-kMLIReadCount = $04
+kMLIReadOrQuitCount = $04
 kMLICloseCount = $01
-kMLIQuitCount = $04
 ;
 ; other stuff
 ;
 aFileBuffer = $9200
 MLI = $BF00
+MACHID = $BF98
 
-         jmp   Start      ; magic jump
-         !byte $EE,$EE    ; magic bytes
-         !byte $40        ; length of inputfile buffer
+         jmp   Start                 ; magic jump
+         !byte $EE,$EE               ; magic bytes
+         !byte $40                   ; length of inputfile buffer
 inputfilebuffer
          !fill $40
 Start
-         ldx   #(CodeEnd-CodeStart)-1
+         ldx   #(CodeEnd-CodeStart)-1; copy code to lower memory so we can load graphic at $2000
 -        lda   CodeStart,x
          sta  $00fe,x
          dex
          bpl   -
          txs
-         jmp   MLI
+;CheckFor128K
+         lda   MACHID
+         and   #$30
+         cmp   #$30                  ; 128K?
+         beq   +                     ; yes, continue
+         stx   inputfilebuffer       ; no, trash inputfilebuffer so open fails and we quit immediately
++        jmp   MLI                   ; exit via MLI (stack is arranged to execute Open MLI call)
 
 CodeStart
 !pseudopc $fe {
-         !word $2000
-         !word Open-1
+         !word $2000                 ; used by main->aux copy loop
+         !word Open-1                ; on stack for first MLI call
 Open
-         !byte kMLIOpen
+         !byte kMLIOpen              ; stack-based params for Open MLI call
          !word mliParamForOpen
-         bcs   Quit
-         jsr   Read1
-         bcs   Close
+         bcs   Quit                  ; file not found or other error? quit immediately
+         jsr   Read1                 ; read first half of graphic (belongs in auxmem)
+         bcs   Close                 ; read error? close & quit
 ;DHGRCopy
          sta   $C00A
          sta   $C000
          sta   $C005                 ; read from mainmem, write to auxmem
--        lda   ($ff,x)
+-        lda   ($ff,x)               ; ($fe) because X is #$FF
          sta   ($ff,x)
          inc   $fe
          bne   -
          inc   $ff
-         bit   $ff
+         bit   $ff                   ; copy until $4000
          bvc   -
          sta   $C004                 ; read/write from mainmem
-         jsr   Read2
+         jsr   Read2                 ; read second half of graphic (stays in main memory)
 Close
-         php
-         jsr   MLI
+         php                         ; save MLI result
+         jsr   MLI                   ; close all files
          !byte kMLIClose
          !word mliParamForClose
-         plp
-         bcs   Quit
+         plp                         ; restore MLI result
+         bcs   Quit                  ; any error? quit without displaying
 ;DHGRShow
-         lda   $C05E
+         lda   $C05E                 ; DHGR mode
          sta   $C00D
          bit   $C050
          bit   $C054
@@ -87,9 +93,9 @@ Close
 -        lda   $C000
          bpl   -
 Quit
-         lsr   mlicmd
+         lsr   mlicmd                ; MLI_QUIT ($65) is half of MLI_READ ($CA) so that's great
 Read1
-         ldy   #kMLIReadCount        ; also #kMLIQuitCount
+         ldy   #kMLIReadOrQuitCount
          sty   mliparam
 Read2
          jsr   MLI
@@ -99,7 +105,7 @@ mlicmd   !byte kMLIRead
 
 mliParamForClose
          !byte kMLICloseCount
-         !byte 0                     ; all handles
+         !byte 0                     ; close all files
 
 mliParamForOpen
          !byte kMLIOpenCount
