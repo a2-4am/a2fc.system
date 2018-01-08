@@ -39,17 +39,17 @@ inputfilebuffer
          !fill $40
 Start
          ldx   #(CodeEnd-CodeStart)
+         txs
 -        lda   CodeStart-1,x
-         sta   Open-1,x
+         pha
          dex
          bne   -
-         txs
-         jmp   Open
+         jmp   MLI
 
 CodeStart
-!pseudopc $100 {
+!pseudopc $101 {
+         !word Open-1
 Open
-         jsr   MLI
          !byte kMLIOpen
          !word mliParamForOpen
          bcs   Quit
@@ -58,12 +58,11 @@ Open
 ;DHGRCopy
          sta   $C00A
          sta   $C000
-         tay
 .writeToAux
          sta   $C005                 ; read from mainmem, write to auxmem
-.copya   lda   $2000,y
-.copyb   sta   $2000,y
-         iny
+.copya   lda   $2000,x
+.copyb   sta   $2000,x
+         inx
          bne   .copya
          sta   $C004                 ; read/write from mainmem
          inc   .copya+2
