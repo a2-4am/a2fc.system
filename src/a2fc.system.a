@@ -59,14 +59,16 @@ Open
          sta   $C00A
          sta   $C000
          sta   $C005                 ; read from mainmem, write to auxmem
-.copya   lda   $2000,x
-.copyb   sta   $2000,x
-         inx
-         bne   .copya
-         inc   .copya+2
-         inc   .copyb+2
-         bit   .copyb+2
-         bvc   .copya                ; loop until address hits $4000
+         ldx   #$20
+         stx   $45                   ; $44 is always 0 after MLI read
+         tay
+-        lda   ($44),y
+         sta   ($44),y
+         iny
+         bne   -
+         inc   $45
+         dex
+         bne   -
          sta   $C004                 ; read/write from mainmem
          jsr   Read
 Close
