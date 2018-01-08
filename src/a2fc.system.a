@@ -50,32 +50,32 @@ Start
          cmp   #$30                  ; 128K?
          beq   +                     ; yes, continue
          stx   inputfilebuffer       ; no, trash inputfilebuffer so open fails and we quit immediately
-+        jmp   MLI                   ; exit via MLI (stack is arranged to execute Open MLI call)
++        jmp   $00ff
 
 CodeStart
 !pseudopc $f7 {
-softswitches
+softswitches                         ; array of low bytes for $c0xx accesses
          !byte $50,$52,$54,$57,$0d,$5e
 
 mliParamForClose
          !byte kMLICloseCount
          !byte 0                     ; close all files, also low part of pointer
 
-         !byte $20                   ; used by main->aux copy loop
-         !word Open-1                ; on stack for first MLI call
+         !byte $20                   ; used by main->aux copy loop, also JSR
+         !word MLI                   ; JSR MLI
 Open
          !byte kMLIOpen              ; stack-based params for Open MLI call
          !word mliParamForOpen
-         ldx   #kMLIReadOrQuitCount  ; they just happen to be the same number
-         stx   mliparam
+         ldx   #4                    ; both Read and Quit accept four parameters
+         stx   mliparam              ; set parameter count for MLI call
          jsr   Read                  ; read first half of graphic (belongs in auxmem)
                                      ; does not return if error
 ;DHGRCopy
          sta   $C00A
          sta   $C000
          sta   $C005                 ; read from mainmem, write to auxmem
--        lda   ($fe-kMLIReadOrQuitCount,x)
-         sta   ($fe-kMLIReadOrQuitCount,x)
+-        lda   ($fa,x)               ; X is 4 from above
+         sta   ($fa,x)               ; X is 4 from above
          inc   $fe
          bne   -
          inc   $ff
