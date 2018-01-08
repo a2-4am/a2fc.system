@@ -34,7 +34,6 @@ MLI = $BF00
 
          jmp   Start      ; magic jump
          !byte $EE,$EE    ; magic bytes
-inputfile
          !byte $40        ; length of inputfile buffer
 inputfilebuffer
          !fill $40
@@ -57,7 +56,6 @@ Open
          jsr   Read
          bcs   Close
 ;DHGRCopy
-         ldx   #$20
          sta   $C00A
          sta   $C000
          tay
@@ -70,8 +68,8 @@ Open
          sta   $C004                 ; read/write from mainmem
          inc   .copya+2
          inc   .copyb+2
-         dex
-         bne   .writeToAux
+         bit   .copyb+2
+         bvc   .writeToAux           ; loop until address hits $4000
          jsr   Read
 Close
          php
