@@ -58,17 +58,16 @@ Open
 ;DHGRCopy
          sta   $C00A
          sta   $C000
-.writeToAux
          sta   $C005                 ; read from mainmem, write to auxmem
 .copya   lda   $2000,x
 .copyb   sta   $2000,x
          inx
          bne   .copya
-         sta   $C004                 ; read/write from mainmem
          inc   .copya+2
          inc   .copyb+2
          bit   .copyb+2
-         bvc   .writeToAux           ; loop until address hits $4000
+         bvc   .copya                ; loop until address hits $4000
+         sta   $C004                 ; read/write from mainmem
          jsr   Read
 Close
          php
