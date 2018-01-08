@@ -59,9 +59,8 @@ CodeStart
 Open
          !byte kMLIOpen              ; stack-based params for Open MLI call
          !word mliParamForOpen
-         bcs   Quit                  ; file not found or other error? quit immediately
          jsr   Read1                 ; read first half of graphic (belongs in auxmem)
-         bcs   Close                 ; read error? close & quit
+         bcs   Close                 ; error during open or read? close & quit
 ;DHGRCopy
          sta   $C00A
          sta   $C000
