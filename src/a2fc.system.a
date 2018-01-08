@@ -30,6 +30,7 @@ kMLIQuitCount = $04
 ; other stuff
 ;
 aFileBuffer = $9200
+MLI = $BF00
 
          jmp   Start      ; magic jump
          !byte $EE,$EE    ; magic bytes
@@ -49,24 +50,19 @@ Start
 CodeStart
 !pseudopc $100 {
 Open
-         jsr   CallMLIImmediate
+         jsr   MLI
+         !byte kMLIOpen
+         !word mliParamForOpen
          bcs   Quit
-                                     ; A is 0 after successful MLI call
-         sta   mliparam+2            ; lo data address
-         sta   mliparam+4            ; lo data length
-         lda   mliparam+5
-         sta   mliparam+1            ; ProDOS file refnum
-         ldx   #$20
-         stx   mliparam+3            ; hi data address
-         stx   mliparam+5            ; hi data length
          lda   #kMLIRead
          ldy   #kMLIReadCount
          jsr   CallMLI
          bcs   Close
 ;DHGRCopy
-         tay
+         ldx   #$20
          sta   $C00A
          sta   $C000
+         tay
 .writeToAux
          sta   $C005                 ; read from mainmem, write to auxmem
 .copya   lda   $2000,y
@@ -105,14 +101,19 @@ Quit
 CallMLI
          sta   mlicmd
          sty   mliparam
-CallMLIImmediate
-         jsr   $BF00
-mlicmd   !byte kMLIOpen
+         jsr   MLI
+mlicmd   !byte kMLIRead
          !word mliparam
          rts
-mliparam !byte kMLIOpenCount
+
+mliParamForOpen
+         !byte kMLIOpenCount
          !word inputfilebuffer
-         !word aFileBuffer
-;        !byte $00,$00,$00,$00
+         !byte <aFileBuffer
+mliparam
+         !byte >aFileBuffer
+         !byte $00                   ; ProDOS file refnum (filled by MLI_OPEN call)
+         !word $2000                 ; data address
+         !word $2000                 ; data length
 }
 CodeEnd
