@@ -68,6 +68,9 @@ mliParamForClose                     ; first handle will be 1, the same as kMLIC
          !word $2000                 ; data address
          !byte $00
 Open
+CopyToAux=*+2                        ; +1 of real address because indexed by X (#$FF) below
+CopyToAuxLow=*+1
+CopyToAuxHigh=*+2
          JSR   MLI                   ; JSR (#$20) is high part of data length
                                      ; MLI is replaced by read length ($2000)
                                      ; and then used by main->aux copy loop
@@ -79,12 +82,12 @@ Open
                                      ; does not return if error
 ;DHGRCopy
          sta   $C005                 ; read from mainmem, write to auxmem
--        lda   (Open+2,x)            ; reads from Open+1 because X is #$FF from above
-         sta   (Open+2,x)            ; reads from Open+1 because X is #$FF from above
-         inc   <(Open+1)
+-        lda   (CopyToAux,x)
+         sta   (CopyToAux,x)
+         inc   <(CopyToAuxLow)
          bne   -
-         inc   <(Open+2)
-         bit   <(Open+2)             ; copy until $4000
+         inc   <(CopyToAuxHigh)
+         bit   <(CopyToAuxHigh)      ; copy until $4000
          bvc   -
          ldx   #(softswitches_e-softswitches)-1
 -        ldy   softswitches,x
