@@ -39,8 +39,8 @@ inputfilebuffer
          !fill $40
 Start
          ldx   #(CodeEnd-CodeStart)-1; copy code to lower memory so we can load graphic at $2000
--        lda   CodeStart,x
-         sta   $50,x
+-        ldy   CodeStart,x
+         sty   $50,x
          dex
          bpl   -
 ;CheckFor128K
@@ -54,7 +54,7 @@ Start
 CodeStart
 !pseudopc $50 {
 softswitches                         ; array of low bytes for $c0xx accesses
-         !byte 0,$5e,$0d,$50,$52,$54,$57,4
+         !byte 4, 0,$5e,$0d,$50,$52,$54,$57
 softswitches_e
 
 mliParamForOpen
@@ -76,8 +76,9 @@ CopyToAuxHigh=*+2
                                      ; and then used by main->aux copy loop
          !byte kMLIOpen
          !word mliParamForOpen
-         lda   #4                    ; both Read and Quit accept four parameters
-         sta   mliparam              ; set parameter count for MLI call
+         sty   mliparam              ; set parameter count for MLI call
+                                     ; both Read and Quit accept four parameters
+                                     ; (Y is 4 from above)
          jsr   Read                  ; read first half of graphic (belongs in auxmem)
                                      ; does not return if error
 ;DHGRCopy
