@@ -38,11 +38,11 @@ MACHID = $BF98
 inputfilebuffer
          !fill $40
 Start
-         ldx   #(CodeEnd-CodeStart)-1; copy code to lower memory so we can load graphic at $2000
--        ldy   CodeStart,x
-         sty   $50,x
+         ldx   #(CodeEnd-CodeStart); copy code to lower memory so we can load graphic at $2000
+-        ldy   CodeStart-1,x
+         sty   $4f,x
          dex
-         bpl   -
+         bne   -
 ;CheckFor128K
          lda   MACHID
          and   #$30
@@ -73,7 +73,7 @@ mliParamForClose                     ; first handle will be 1, the same as kMLIC
          !byte $00                   ; ProDOS file refnum (filled by MLI_OPEN call)
          !word $2000                 ; data address
          !byte $00
-CopyToAux=*+2                        ; +1 of real address because indexed by X (#$FF) below
+CopyToAux=*+1
 CopyToAuxLow=*+1
 CopyToAuxHigh=*+2
 ReadFile
