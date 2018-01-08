@@ -38,15 +38,16 @@ inputfile
 inputfilebuffer
          !fill $40
 Start
-         ldx   #$00
-FM       lda   CodeStart,x
-         sta   Open,x
-         inx
-         bne   FM
+         ldx   #(CodeEnd-CodeStart)
+-        lda   CodeStart-1,x
+         sta   Open-1,x
+         dex
+         bne   -
+         txs
          jmp   Open
-CodeStart
 
-!pseudopc $200 {
+CodeStart
+!pseudopc $100 {
 Open
          jsr   CallMLIImmediate
          bcs   Quit
@@ -63,10 +64,9 @@ Open
          jsr   CallMLI
          bcs   Close
 ;DHGRCopy
+         tay
          sta   $C00A
          sta   $C000
-         tay                         ; A is 0 after successful MLI call
-                                     ; X is still #$20
 .writeToAux
          sta   $C005                 ; read from mainmem, write to auxmem
 .copya   lda   $2000,y
@@ -83,9 +83,12 @@ Open
          ldy   #kMLIReadCount
          jsr   CallMLI
 Close
+         php
          lda   #kMLIClose
          ldy   #kMLICloseCount
          jsr   CallMLI
+         plp
+         bcs   Quit
 ;DHGRShow
          lda   $C05E
          sta   $C00D
@@ -111,5 +114,5 @@ mliparam !byte kMLIOpenCount
          !word inputfilebuffer
          !word aFileBuffer
 ;        !byte $00,$00,$00,$00
-End
 }
+CodeEnd
