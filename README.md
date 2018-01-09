@@ -18,6 +18,17 @@ Application path: A2FC.SYSTEM
 Startup:          ?PHOTOS/MYPIC.A2FC
 ````
 
+## Memory Usage
+
+`a2fc.system` loads at $2000 (like any `.system` file) but relocates itself to zero page. It loads the given `.a2fc` file into hi-res page 1, but only $2000 bytes at a time, so it never touches hi-res page 2.
+
+````
+0050..0096     relocated program code
+2000..3FFF     graphic data
+2000..3FFF/aux graphic data
+9200..95FF     ProDOS file buffer
+````
+
 ## Tools to create A2FC files
 
  * [BMPA2FC](http://www.appleoldies.ca/graphics/index.htm#dhgr) (Windows)
