@@ -20,12 +20,6 @@ kMLIRead = $CA
 kMLIClose = $CC
 kMLIQuit = $65
 ;
-; MLI parameter counts
-;
-kMLIOpenCount = $03
-kMLIReadOrQuitCount = $04
-kMLICloseCount = $01
-;
 ; other stuff
 ;
 aFileBuffer = $9200
@@ -34,14 +28,13 @@ MACHID = $BF98
 
          jmp   Start                 ; magic jump
          !byte $EE,$EE               ; magic bytes
-         !byte $40                   ; length of inputfile buffer
-inputfilebuffer
+         !byte $40                   ; length of sStartupPath
+sStartupPath
          !fill $40
 Start
          ldy   #(CodeEnd-CodeStart)  ; copy code to lower memory so we can load graphic at $2000
--        ldx   CodeStart-1,y         ; the last byte fetched is the '3' for kMLIOpenCount
-                                     ; it will be converted later to a '4' for become kMLIReadOrQuitCount
-                                     ; also used for switching from aux to main memory access
+-        ldx   CodeStart-1,y         ; the last byte fetched (3, for the MLI_OPEN parameter count)
+                                     ; is later re-used for unrelated purposes
          stx   $4f,y
          dey
          bne   -                     ; Y is 0 on exit, required later
@@ -50,7 +43,7 @@ Start
          and   #$30
          cmp   #$30                  ; 128K?
          beq   +                     ; yes, continue
-         sty   inputfilebuffer       ; no, trash inputfilebuffer so open fails and we quit immediately
+         sty   sStartupPath          ; no, trash startup path so MLI_OPEN fails and we quit immediately
 +        jsr   MLI                   ; open file
          !byte kMLIOpen
          !word mliParamForOpen
@@ -62,13 +55,14 @@ Start
 CodeStart
 !pseudopc $50 {
 mliParamForOpen
-         !byte 3                     ; kMLIOpenCount when used here
-         !word inputfilebuffer
-         !byte <aFileBuffer
-mliparam
-         !byte >aFileBuffer
-mliParamForClose                     ; first handle will be 1, the same as kMLICloseCount
+         !byte 3                     ; MLI_OPEN parameter count, but later re-used for unrelated purposes
+         !word sStartupPath
+mliparam=*+1
+         !word aFileBuffer
+mliParamForClose
          !byte $00                   ; ProDOS file refnum (filled by MLI_OPEN call)
+                                     ; because the first file refnum will always be 1, this value is
+                                     ; later re-used as the parameter count for the MLI_CLOSE call
          !word $2000                 ; data address
          !byte $00
 CopyToAux=*+1
@@ -90,14 +84,15 @@ ReadFile
          bit   <(CopyToAuxHigh)      ; copy until $4000
          bvc   -
 SoftswitchBase=*+1
-         sta   $C000,x               ; read from mainmem, write to mainmem
-                                     ; X is 4 from above
+         sta   $C000,x               ; read from mainmem, write to mainmem ($C004 because X is 4 from above)
          jsr   Read                  ; read second half of graphic (stays in main memory)
                                      ; does not return if error
 ;DHGRShow
          ldx   #(softswitches_e-softswitches)-1
--        ldy   <softswitches,x       ; the last byte fetched is the '0', required later
-         sta   (SoftswitchBase),y    ; enable DHGR graphics display
+-        ldy   <softswitches,x       ; the last byte fetched is 0 to hit $C000, this is re-used later
+                                     ; for unrelated purposes
+         sta   (SoftswitchBase),y    ; enable DHGR graphics display by hitting all the right softswitches
+                                     ; in the following order $C057,$C054,$C052,$C050,$C00D,$C05E,$C000
          dex
          bpl   -
 ;WaitForKey
