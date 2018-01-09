@@ -52,15 +52,15 @@ Start
 +        jsr   MLI                   ; open file
          !byte kMLIOpen
          !word mliParamForOpen
-         sty   <mliparam             ; set parameter count for MLI call
+         lda   #4
+         sta   <mliparam             ; set parameter count for MLI call
                                      ; both Read and Quit accept four parameters
-                                     ; (Y is 4 from above)
          jmp   ReadFile
 
 CodeStart
 !pseudopc $50 {
 softswitches                         ; array of low bytes for $c0xx accesses
-         !byte 4,0,$5e,$0d,$50,$52,$54,$57
+         !byte 0,$5e,$0d,$50,$52,$54,$57
 softswitches_e
 
 mliParamForOpen
@@ -84,21 +84,22 @@ ReadFile
                                      ; does not return if error
 ;DHGRCopy
          sta   $C005                 ; read from mainmem, write to auxmem
--        lda   (CopyToAux,x)
-         sta   (CopyToAux,x)
-         inc   <(CopyToAuxLow)
+-        lda   (CopyToAux),y         ; Y is zero from first loop
+         sta   (CopyToAux),y         ; Y is zero from first loop
+         iny
          bne   -
          inc   <(CopyToAuxHigh)
          bit   <(CopyToAuxHigh)      ; copy until $4000
          bvc   -
-         ldx   #(softswitches_e-softswitches)-1
--        ldy   softswitches,x
-         sta   (SoftswitchBase),y    ; restore main memory access, enable DHGR graphics display
-         dex
-         bpl   -
+         sta   $C004                 ; read from mainmem, write to mainmem
          jsr   Read                  ; read second half of graphic (stays in main memory)
                                      ; does not return if error
 ;DHGRShow
+         ldx   #(softswitches_e-softswitches)-1
+-        ldy   softswitches,x
+         sta   (SoftswitchBase),y    ; enable DHGR graphics display
+         dex
+         bpl   -
 ;WaitForKey
 SoftswitchBase=*+1
 -        lda   $C000
