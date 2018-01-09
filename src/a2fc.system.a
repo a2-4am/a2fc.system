@@ -38,33 +38,31 @@ MACHID = $BF98
 inputfilebuffer
          !fill $40
 Start
-         ldx   #(CodeEnd-CodeStart); copy code to lower memory so we can load graphic at $2000
--        ldy   CodeStart-1,x
-         sty   $4f,x
-         dex
-         bne   -
+         ldy   #(CodeEnd-CodeStart)  ; copy code to lower memory so we can load graphic at $2000
+-        ldx   CodeStart-1,y         ; the last byte fetched is the '3' for kMLIOpenCount
+                                     ; it will be converted later to a '4' for become kMLIReadOrQuitCount
+                                     ; also used for switching from aux to main memory access
+         stx   $4f,y
+         dey
+         bne   -                     ; Y is 0 on exit, required later
 ;CheckFor128K
          lda   MACHID
          and   #$30
          cmp   #$30                  ; 128K?
          beq   +                     ; yes, continue
-         stx   inputfilebuffer       ; no, trash inputfilebuffer so open fails and we quit immediately
+         sty   inputfilebuffer       ; no, trash inputfilebuffer so open fails and we quit immediately
 +        jsr   MLI                   ; open file
          !byte kMLIOpen
          !word mliParamForOpen
-         lda   #4
-         sta   <mliparam             ; set parameter count for MLI call
+         inx                         ; convert to kMLIReadOrQuitCount
+         stx   <mliparam             ; set parameter count for MLI call
                                      ; both Read and Quit accept four parameters
          jmp   ReadFile
 
 CodeStart
 !pseudopc $50 {
-softswitches                         ; array of low bytes for $c0xx accesses
-         !byte 0,$5e,$0d,$50,$52,$54,$57
-softswitches_e
-
 mliParamForOpen
-         !byte kMLIOpenCount
+         !byte 3                     ; kMLIOpenCount when used here
          !word inputfilebuffer
          !byte <aFileBuffer
 mliparam
@@ -91,18 +89,19 @@ ReadFile
          inc   <(CopyToAuxHigh)
          bit   <(CopyToAuxHigh)      ; copy until $4000
          bvc   -
-         sta   $C004                 ; read from mainmem, write to mainmem
+SoftswitchBase=*+1
+         sta   $C000,x               ; read from mainmem, write to mainmem
+                                     ; X is 4 from above
          jsr   Read                  ; read second half of graphic (stays in main memory)
                                      ; does not return if error
 ;DHGRShow
          ldx   #(softswitches_e-softswitches)-1
--        ldy   softswitches,x
+-        ldy   <softswitches,x       ; the last byte fetched is the '0', required later
          sta   (SoftswitchBase),y    ; enable DHGR graphics display
          dex
          bpl   -
 ;WaitForKey
-SoftswitchBase=*+1
--        lda   $C000
+-        lda   (SoftswitchBase),y    ; $C000 because Y is 0 from above
          bpl   -
 Close
          jsr   MLI                   ; close all files
@@ -116,5 +115,9 @@ mlicmd   !byte kMLIRead
          !word mliparam
          bcs   Close                 ; error during open or read? close & quit
          rts
+
+softswitches                         ; array of low bytes for $c0xx accesses
+         !byte 0,$5e,$0d,$50,$52,$54,$57
+softswitches_e
 }
 CodeEnd
