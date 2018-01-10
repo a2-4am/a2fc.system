@@ -47,10 +47,17 @@ Start
 +        jsr   MLI                   ; open file
          !byte kMLIOpen
          !word mliParamForOpen
-         inx                         ; convert to kMLIReadOrQuitCount
+         inx                         ; convert to kMLIReadOrQuitCount, clear Z flag
          stx   <mliparam             ; set parameter count for MLI call
                                      ; both Read and Quit accept four parameters
-         jmp   ReadFile
+!cpu 65816
+         sep   #2                    ; set Z flag on 65816 only
+!cpu 6502
+         bne   +                     ; conditionally skip GS-specific code
+         lda   $c029
+         and   #$1f
+         sta   $c029
++        jmp   ReadFile
 
 CodeStart
 !pseudopc $50 {
